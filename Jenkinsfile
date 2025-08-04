@@ -44,13 +44,7 @@ pipeline {
             steps {
                 // Run SonarQube analysis
                 withSonarQubeEnv('Sonar') {
-                    sh '''
-                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=simple-flask-app \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_AUTH_TOKEN}
-                    '''
+                    sh "${tool('Sonar')}/bin/sonar-scanner"
                 }
             }
         }
