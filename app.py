@@ -7,7 +7,7 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     """This function runs when someone visits the main page."""
-    return jsonify(message="Hello! This is a simple Flask app for the DevSecOps demo.")
+    return jsonify(message="Hello! My name is Divyansh Jha and thisis a simple Flask app for the DevSecOps demo.")
 
 # Run the app
 if __name__ == '__main__':

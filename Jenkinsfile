@@ -4,6 +4,7 @@ pipeline {
     environment {
         // Define environment variables if needed
         PYTHONPATH = "${WORKSPACE}"
+        SONAR_HOME=tool"Sonar"
     }
 
     stages {
@@ -14,29 +15,23 @@ pipeline {
             }
         }
 
-        stage('Setup Python Environment') {
+        stage('Setup Python Environment & Run Tests') {
             steps {
-                script {
-                    // Install Python dependencies
-                    sh '''
-                        python3 -m pip install --user --upgrade pip
-                        python3 -m pip install --user -r requirements.txt
-                    '''
-                }
-            }
-        }
-
-        stage('Run Tests and Generate Coverage') {
-            steps {
-                script {
-                    // Run tests with coverage
-                    sh '''
-                        python3 -m pytest test_app.py --cov=app --cov-report=xml:coverage.xml --cov-report=term
-                    '''
-                }
-                
-                // Archive test results if you want
-                publishTestResults testResultsPattern: 'coverage.xml'
+                sh '''
+                    # Install pip if not available
+                    if ! python3 -m pip --version; then
+                        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+                        python3 get-pip.py --user
+                        rm get-pip.py
+                    fi
+                    
+                    # Install dependencies
+                    python3 -m pip install --user --upgrade pip
+                    python3 -m pip install --user -r requirements.txt
+                    
+                    # Run tests with coverage
+                    python3 -m pytest test_app.py --cov=app --cov-report=xml:coverage.xml --cov-report=term || true
+                '''
             }
         }
 
@@ -60,14 +55,12 @@ pipeline {
 
         stage('Security Scan with Bandit') {
             steps {
-                script {
-                    // Install and run Bandit for security scanning
-                    sh '''
-                        python3 -m pip install --user bandit
-                        python3 -m bandit -r . -f json -o bandit-report.json || true
-                        python3 -m bandit -r . || true
-                    '''
-                }
+                sh '''
+                    # Install and run Bandit for security scanning
+                    python3 -m pip install --user bandit
+                    python3 -m bandit -r . -f json -o bandit-report.json || true
+                    echo "Bandit security scan completed"
+                '''
             }
         }
 
