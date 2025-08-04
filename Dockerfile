@@ -16,6 +16,5 @@ RUN pytest --cov=. --cov-report=xml
 
 # Expose the port the app runs on
 EXPOSE 5000
-
 # The command to run when the container starts
 CMD ["python", "app.py"]
