@@ -66,18 +66,22 @@ pipeline {
             }
         }
 
+        // --- UPDATED DEPLOYMENT STAGE ---
         stage('Deploy Application') {
             steps {
-                echo 'Deploying the application for DAST scanning...'
+                echo 'Stopping and removing any old containers to prevent conflicts...'
+                // This command cleans up the previous deployment first
+                sh 'docker-compose down'
+
+                echo 'Deploying the new, scanned application...'
+                // This command starts the new version
                 sh 'docker-compose up -d'
             }
         }
 
-        // --- NEW DAST STAGE WITH ZAP ---
         stage('Dynamic Security Scan (DAST) with ZAP') {
             steps {
                 echo 'Starting DAST scan against the running application...'
-                // This command runs the ZAP Docker container, connects it to our app's network, and starts a full scan
                 sh '''
                     docker run --network devsecops-network --rm \
                     -v $(pwd):/zap/wrk/:rw \
@@ -88,7 +92,6 @@ pipeline {
             }
             post {
                 always {
-                    // Publishes the ZAP HTML report to the Jenkins build page
                     publishHTML(
                         target: [
                             allowMissing: true,
