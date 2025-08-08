@@ -70,30 +70,27 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 echo 'Stopping and removing any old containers to prevent conflicts...'
-                // Force cleanup of any existing containers and networks
+                // Scoped cleanup to this app only
                 sh '''
                     # Stop and remove the specific container if it exists
                     docker stop devsecops_app || true
                     docker rm devsecops_app || true
                     
-                    # Stop all containers from docker-compose
+                    # Stop all containers from docker-compose for this project
                     docker-compose down --remove-orphans || true
-                    
-                    # Force remove any remaining containers
-                    docker ps -aq | xargs -r docker rm -f || true
-                    
-                    # Clean up networks
-                    docker network prune -f || true
                     
                     # Remove the specific network if it exists
                     docker network rm devsecops-network || true
+                    
+                    # Clean up dangling networks (safe)
+                    docker network prune -f || true
                 '''
 
                 echo 'Deploying the new, scanned application...'
                 // This command starts the new version
                 sh 'docker-compose up -d'
                 
-                // Wait for the application to be ready
+                // Wait briefly for the application to be ready
                 sh 'sleep 10'
             }
         }
@@ -103,16 +100,11 @@ pipeline {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo 'Starting DAST scan against the running application...'
                     sh '''
-                        # Wait for the application to be fully ready
-                        timeout 30 bash -c 'until curl -f http://localhost:5000; do sleep 2; done' || echo "Application may not be fully ready, proceeding with scan"
-                        
-                        # Run ZAP scan with proper error handling
                         docker run --network devsecops-network --rm \
                         -v $(pwd):/zap/wrk/:rw \
                         owasp/zap2docker-stable zap-full-scan.py \
                         -t http://devsecops_app:5000 \
-                        -r zap_report.html \
-                        --auto || echo "ZAP scan completed with warnings"
+                        -r zap_report.html
                     '''
                 }
             }
@@ -137,16 +129,13 @@ pipeline {
         always {
             echo 'Cleaning up all containers and networks...'
             sh '''
-                # Stop all containers gracefully
+                # Stop only this project's containers
                 docker-compose down --remove-orphans || true
                 
-                # Force remove any remaining containers
-                docker ps -aq | xargs -r docker rm -f || true
-                
-                # Remove the network if it exists
+                # Remove the app network if it exists
                 docker network rm devsecops-network || true
                 
-                # Clean up any dangling networks
+                # Clean up any dangling networks (safe)
                 docker network prune -f || true
             '''
         }
