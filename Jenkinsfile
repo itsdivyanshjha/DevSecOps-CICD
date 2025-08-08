@@ -70,25 +70,30 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 echo 'Stopping and removing any old containers to prevent conflicts...'
-                // This command cleans up the previous deployment first
-                sh 'docker-compose down'
+                // Force cleanup of any existing containers and networks
+                sh '''
+                    docker-compose down --remove-orphans || true
+                    docker network prune -f || true
+                '''
 
                 echo 'Deploying the new, scanned application...'
                 // This command starts the new version
                 sh 'docker-compose up -d'
+                
+                // Wait for the application to be ready
+                sh 'sleep 10'
             }
         }
 
         stage('Dynamic Security Scan (DAST) with ZAP') {
             steps {
-                echo 'Starting DAST scan against the running application...'
-                sh '''
-                    docker run --network devsecops-network --rm \
-                    -v $(pwd):/zap/wrk/:rw \
-                    owasp/zap2docker-stable zap-full-scan.py \
-                    -t http://devsecops_app:5000 \
-                    -r zap_report.html
-                '''
+                timeout(time: 10, unit: 'MINUTES') {
+                    echo 'Starting DAST scan against the running application...'
+                    sh '''
+                        chmod +x dast-scan.sh
+                        ./dast-scan.sh
+                    '''
+                }
             }
             post {
                 always {
@@ -110,7 +115,19 @@ pipeline {
         // This 'always' block runs at the very end to clean everything up
         always {
             echo 'Cleaning up all containers and networks...'
-            sh 'docker-compose down'
+            sh '''
+                # Stop all containers gracefully
+                docker-compose down --remove-orphans || true
+                
+                # Force remove any remaining containers
+                docker ps -aq | xargs -r docker rm -f || true
+                
+                # Remove the network if it exists
+                docker network rm devsecops-network || true
+                
+                # Clean up any dangling networks
+                docker network prune -f || true
+            '''
         }
     }
 }

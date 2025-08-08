@@ -9,6 +9,15 @@ services:
     container_name: devsecops_app
     networks:
       - app-network
+    # Add healthcheck to ensure application is ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Add restart policy for reliability
+    restart: unless-stopped
 
 # Define a network that both our app and ZAP can share
 networks:
