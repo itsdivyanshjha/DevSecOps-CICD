@@ -5,3 +5,12 @@ services:
     build: .
     ports:
       - "5000:5000"
+    # Give the container a consistent name for ZAP to target
+    container_name: devsecops_app
+    networks:
+      - app-network
+
+# Define a network that both our app and ZAP can share
+networks:
+  app-network:
+    name: devsecops-network
