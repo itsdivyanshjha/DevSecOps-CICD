@@ -69,7 +69,6 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 echo 'Stopping and removing any old containers to prevent conflicts...'
-                // A single 'docker-compose down' is the cleanest way to handle cleanup
                 sh 'docker-compose down'
 
                 echo 'Deploying the new, scanned application...'
@@ -84,11 +83,11 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo 'Starting DAST scan against the running application...'
-                    // CORRECTED the ZAP Docker image name
+                    // CORRECTED the ZAP Docker image name to include a specific version tag
                     sh '''
                         docker run --network devsecops-network --rm \
                         -v $(pwd):/zap/wrk/:rw \
-                        softwaresecurityproject/zap-stable zap-full-scan.py \
+                        softwaresecurityproject/zap-stable:2.14.0 zap-full-scan.py \
                         -t http://devsecops_app:5000 \
                         -r zap_report.html
                     '''
@@ -114,7 +113,6 @@ pipeline {
         // This 'always' block runs at the very end to clean everything up
         always {
             echo 'Cleaning up all containers and networks...'
-            // A single 'docker-compose down' is all that is needed for final cleanup
             sh 'docker-compose down'
         }
     }
