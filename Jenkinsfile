@@ -83,11 +83,11 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo 'Starting DAST scan against the running application...'
-                    // CORRECTED the ZAP Docker image name to include a specific version tag
+                    // CORRECTED the ZAP Docker image name to the current official one
                     sh '''
                         docker run --network devsecops-network --rm \
                         -v $(pwd):/zap/wrk/:rw \
-                        softwaresecurityproject/zap-stable:2.14.0 zap-full-scan.py \
+                        ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py \
                         -t http://devsecops_app:5000 \
                         -r zap_report.html
                     '''
