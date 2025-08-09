@@ -83,9 +83,9 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo 'Starting DAST scan against the running application...'
-                    // ADDED the --user flag to fix the permission issue
+                    // CORRECTED the --user flag to 'root' as per official ZAP guidelines
                     sh '''
-                        docker run --user $(id -u):$(id -g) --network devsecops-network --rm \
+                        docker run --user root --network devsecops-network --rm \
                         -v $(pwd):/zap/wrk/:rw \
                         ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py \
                         -t http://devsecops_app:5000 \
