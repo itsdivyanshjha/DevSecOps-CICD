@@ -66,31 +66,16 @@ pipeline {
             }
         }
 
-        // --- UPDATED DEPLOYMENT STAGE ---
         stage('Deploy Application') {
             steps {
                 echo 'Stopping and removing any old containers to prevent conflicts...'
-                // Scoped cleanup to this app only
-                sh '''
-                    # Stop and remove the specific container if it exists
-                    docker stop devsecops_app || true
-                    docker rm devsecops_app || true
-                    
-                    # Stop all containers from docker-compose for this project
-                    docker-compose down --remove-orphans || true
-                    
-                    # Remove the specific network if it exists
-                    docker network rm devsecops-network || true
-                    
-                    # Clean up dangling networks (safe)
-                    docker network prune -f || true
-                '''
+                // A single 'docker-compose down' is the cleanest way to handle cleanup
+                sh 'docker-compose down'
 
                 echo 'Deploying the new, scanned application...'
-                // This command starts the new version
                 sh 'docker-compose up -d'
                 
-                // Wait briefly for the application to be ready
+                echo 'Waiting 10 seconds for application to start...'
                 sh 'sleep 10'
             }
         }
@@ -99,10 +84,11 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     echo 'Starting DAST scan against the running application...'
+                    // CORRECTED the ZAP Docker image name
                     sh '''
                         docker run --network devsecops-network --rm \
                         -v $(pwd):/zap/wrk/:rw \
-                        owasp/zap2docker-stable zap-full-scan.py \
+                        softwaresecurityproject/zap-stable zap-full-scan.py \
                         -t http://devsecops_app:5000 \
                         -r zap_report.html
                     '''
@@ -128,16 +114,8 @@ pipeline {
         // This 'always' block runs at the very end to clean everything up
         always {
             echo 'Cleaning up all containers and networks...'
-            sh '''
-                # Stop only this project's containers
-                docker-compose down --remove-orphans || true
-                
-                # Remove the app network if it exists
-                docker network rm devsecops-network || true
-                
-                # Clean up any dangling networks (safe)
-                docker network prune -f || true
-            '''
+            // A single 'docker-compose down' is all that is needed for final cleanup
+            sh 'docker-compose down'
         }
     }
 }
